@@ -24,9 +24,28 @@ diff_7.plot(ax=axs[1], grid=True, marker=".") # 7-day difference time
 from statsmodels.tsa.arima.model import ARIMA
 origin, today = "2019-01-01", "2019-05-31"
 rail_series = df.loc[origin:today]["rail"].asfreq("D")
-model = ARIMA(rail_series,
-order=(1, 0, 0),
-seasonal_order=(0, 1, 1, 7))
-model = model.fit()
+model = ARIMA(rail_series, order=(1, 0, 0), seasonal_order=(0, 1, 1, 7)) # Order -> p=1; d=0; q=0 (p->How many past values; d->How many diffs; q->moving average from previous data)
+model = model.fit()                                                      # Seasonal Order -> P=0; D=1; Q=1; s=7. Sazonality hyperparameters
 y_pred = model.forecast() 
 print(y_pred)
+# The prediction is slightly worse than naive forecasting (repeating the previous week data)
+
+origin, start_date, end_date = "2019-01-01", "2019-03-01", "2019-05-31"
+
+time_period = pd.date_range(start_date, end_date)
+rail_series = df.loc[origin:end_date]["rail"].asfreq("D")
+
+y_preds = []
+
+for today in time_period.shift(-1):
+    model = ARIMA(rail_series[origin:today], order=(1, 0, 0), seasonal_order=(0, 1, 1, 7))
+
+    model = model.fit() 
+    y_pred = model.forecast().iloc[0]
+    y_preds.append(y_pred)
+
+y_preds = pd.Series(y_preds, index=time_period)
+mae = (y_preds - rail_series[time_period]).abs().mean()
+print(mae)
+
+# The mean absolute error is way batter than naive forecasting, beating by aproximatelly 10k
