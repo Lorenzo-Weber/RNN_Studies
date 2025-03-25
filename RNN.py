@@ -19,4 +19,14 @@ fig, axs = plt.subplots(2, 1, sharex=True, figsize=(8, 5))
 df.plot(ax=axs[0], legend=False, marker=".") # original time series
 df.shift(7).plot(ax=axs[0], grid=True, legend=False, linestyle=":") 
 diff_7.plot(ax=axs[1], grid=True, marker=".") # 7-day difference time
-plt.show()
+# plt.show()
+
+from statsmodels.tsa.arima.model import ARIMA
+origin, today = "2019-01-01", "2019-05-31"
+rail_series = df.loc[origin:today]["rail"].asfreq("D")
+model = ARIMA(rail_series,
+order=(1, 0, 0),
+seasonal_order=(0, 1, 1, 7))
+model = model.fit()
+y_pred = model.forecast() 
+print(y_pred)
