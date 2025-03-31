@@ -94,9 +94,28 @@ model = tf.keras.Sequential([
 et_callback = tf.keras.callbacks.EarlyStopping(patience=50, monitor='val_mae', restore_best_weights=True)
 opt = tf.keras.optimizers.SGD(learning_rate=0.02, momentum=0.9)
 
-model.compile(loss=tf.keras.losses.Huber(), optimizer=opt, metrics=['mae'])
+# model.compile(loss=tf.keras.losses.Huber(), optimizer=opt, metrics=['mae'])
+# history = model.fit(train_ds, validation_data=valid_ds, epochs=500, callbacks=[et_callback])
 
-history = model.fit(train_ds, validation_data=valid_ds, epochs=500, callbacks=[et_callback])
 # Outputs a MAE of 37k, which is better then naive forecasting but is worse than SARIMA
 
+
 # Using actual RNNs
+
+rnn_model = tf.keras.Sequential([
+    tf.keras.layers.SimpleRNN(1, input_shape=[None, 1])
+])
+
+# rnn_model.compile(loss=tf.keras.losses.Huber(), optimizer=opt, metrics=['mae'])
+# rnn_model.fit(train_ds, validation_data=valid_ds, epochs=500, callbacks=[et_callback])
+
+# Runs badly because it only has one neuron (cant keep up with this memory size) 
+# and uses a tanh activation function, which returns values from -1 to 1, while
+# the outputs would be at 1 - 1.4
+
+better_rnn = tf.keras.Sequential([
+    tf.keras.layers.SimpleRNN(32, input_shape=[None, 1]),
+    tf.keras.layers.Dense(1)
+])
+better_rnn.compile(loss=tf.keras.losses.Huber(), optimizer=opt, metrics=['mae'])
+better_rnn.fit(train_ds, validation_data=valid_ds, epochs=500, callbacks=[et_callback])
