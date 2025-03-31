@@ -49,3 +49,54 @@ mae = (y_preds - rail_series[time_period]).abs().mean()
 print(mae)
 
 # The mean absolute error is way batter than naive forecasting, beating by aproximatelly 10k
+
+# Generates a sequence of data and then transforms it into blocks called windows (4 numbers 1 label and so on)
+dataset = tf.data.Dataset.range(6).window(4, shift=1, drop_remainder=True)
+dataset = dataset.flat_map(lambda window_dataset: window_dataset.batch(4))
+
+for window_tensor in dataset:
+    print(f"{window_tensor}")
+
+# Function that recieves a dataset and transforms it into windows blocks 
+def to_windows(dataset, length):
+    dataset = dataset.window(length, shift=1, drop_remainder=True)
+    return dataset.flat_map(lambda window_ds: window_ds.batch(length))
+
+# Splits the dataset on 3 parts and divide them by a million (ensuring that the data keeps in the 0 - 1 range)
+rail_train = df["rail"]["2016-01":"2018-12"] / 1e6
+rail_valid = df["rail"]["2019-01":"2019-05"] / 1e6
+rail_test = df["rail"]["2019-06":] / 1e6
+
+seq_length = 56
+
+train_ds = tf.keras.utils.timeseries_dataset_from_array(
+    rail_train.to_numpy(),
+    targets=rail_train[seq_length:],
+    sequence_length=seq_length,
+    batch_size=32,
+    shuffle=True,
+    seed=42
+)
+
+valid_ds = tf.keras.utils.timeseries_dataset_from_array(
+    rail_valid.to_numpy(),
+    targets=rail_valid[seq_length:],
+    sequence_length=seq_length,
+    batch_size=32
+)
+
+
+# Using a simple regression model to predict the number of passengers given a date
+model = tf.keras.Sequential([
+    tf.keras.layers.Dense(1, input_shape=[seq_length])
+])
+
+et_callback = tf.keras.callbacks.EarlyStopping(patience=50, monitor='val_mae', restore_best_weights=True)
+opt = tf.keras.optimizers.SGD(learning_rate=0.02, momentum=0.9)
+
+model.compile(loss=tf.keras.losses.Huber(), optimizer=opt, metrics=['mae'])
+
+history = model.fit(train_ds, validation_data=valid_ds, epochs=500, callbacks=[et_callback])
+# Outputs a MAE of 37k, which is better then naive forecasting but is worse than SARIMA
+
+# Using actual RNNs
